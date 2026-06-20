@@ -15,8 +15,9 @@ import { unfurl } from './unfurl.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = resolve(__dirname, '..')
 const DIST_DIR = join(ROOT_DIR, 'dist')
-const PORT = Number(process.env.PORT ?? 3000)
+const PORT = Number(process.env.PORT ?? 9527)
 const HOST = process.env.HOST ?? '0.0.0.0'
+const PUBLIC_HOST = process.env.PUBLIC_HOST
 const isProduction = process.env.NODE_ENV === 'production'
 
 const app = fastify({
@@ -86,7 +87,7 @@ app.get('/unfurl', async (req, res) => {
 })
 
 if (isProduction) {
-  app.get('/*', async (req, res) => {
+  const serveProductionRequest = async (req: any, res: any) => {
     const pathname = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`).pathname
     const file = await readDistFile(pathname)
 
@@ -95,14 +96,19 @@ if (isProduction) {
       return
     }
 
-    if (req.headers.accept?.includes('text/html')) {
+    if (pathname.startsWith('/room/') || req.headers.accept?.includes('text/html')) {
       const index = await readFile(join(DIST_DIR, 'index.html'))
       res.type('text/html').send(index)
       return
     }
 
     res.code(404).send({ error: 'Not found' })
-  })
+  }
+
+  app.get('/room/demo', serveProductionRequest)
+  app.get('/room/:roomId', serveProductionRequest)
+  app.get('/*', serveProductionRequest)
+  app.setNotFoundHandler(serveProductionRequest)
 } else {
   const vite = await createViteServer({
     root: ROOT_DIR,
@@ -162,19 +168,21 @@ function getContentType(filePath: string) {
 
 function printServerUrls() {
   const localUrl = `http://localhost:${PORT}/room/demo`
-  const lanUrls = getLanAddresses().map((address) => `http://${address}:${PORT}/room/demo`)
+  const lanHosts = PUBLIC_HOST ? [PUBLIC_HOST] : getLanAddresses()
+  const lanUrls = lanHosts.map((address) => `http://${address}:${PORT}/room/demo`)
 
   console.log('')
   console.log('Demoboard is running')
   console.log(`Local: ${localUrl}`)
 
   if (lanUrls.length > 0) {
-    console.log('LAN:')
+    console.log(PUBLIC_HOST ? 'Public:' : 'LAN:')
     for (const url of lanUrls) {
       console.log(`  ${url}`)
     }
   } else {
     console.log('LAN: no active IPv4 network address found')
+    console.log(`Host/LAN: http://<host-ip>:${PORT}/room/demo`)
   }
 
   console.log('')
