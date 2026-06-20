@@ -90,3 +90,8 @@ HOST=0.0.0.0 PORT=9527 npm run start:lan
 白板状态只保存在内存中。进程重启或最后一个客户端离开房间后，当前房间内容会被释放，没有 sqlite 等存储，仅用于临时演示场景。
 
 白板演示功能使用 [tldraw sync sdk](https://tldraw.dev/) 构建
+
+## 参考
+
+- [tldraw](https://tldraw.dev/)
+- [previewed 2D](https://previewed.app/editor/2D/)
